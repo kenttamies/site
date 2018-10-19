@@ -9,7 +9,7 @@ html {
 
 h1, h2, p, a {
   color:#383635;
-  font-family: Arial, sans-serif;
+  font-family: Arvo, sans-serif;
   text-align: center;
 }
 
@@ -83,8 +83,7 @@ h1{
   transform: translateY(-300px);
 }
 .box {
-  background: rgba(0,0,0,0);
-  color: #fff;
+  
   box-shadow: none;
   -webkit-transition: background 0.3s;
   transition: background 0.3s;
