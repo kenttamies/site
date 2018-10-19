@@ -89,10 +89,6 @@ h1{
   transition: background 0.3s;
 }
 
-.box:hover {
-  background: rgba(0,0,0,0.4);
-}
-
 .box h3,
 .box p {
   -webkit-transition: none;
