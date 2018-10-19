@@ -42,7 +42,7 @@ h1{
 
 .box svg line {
   stroke-width: 5;
-  stroke: #ecf0f1;
+  stroke: #383635;
   fill: none;
   -webkit-transition: all .8s ease-in-out;
   transition: all .8s ease-in-out;
