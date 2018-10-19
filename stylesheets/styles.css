@@ -27,7 +27,7 @@ h1{
   position: absolute;
   display: inline-block;
   cursor: pointer;
-  color: #2d3e5a;
+  color: #F8F8F2;
   box-shadow: inset 0 0 0 3px #fff;
   -webkit-transition: background 0.4s 0.5s;
   transition: background 0.4s 0.5s;
