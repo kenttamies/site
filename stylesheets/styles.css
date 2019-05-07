@@ -1,15 +1,15 @@
-@import url(https://fonts.googleapis.com/css?family=Arvo:400,700,400italic);
+@import url(https://fonts.googleapis.com/css?family=Roboto);
 
 
 
 html { 
-  background: #F8F8F2;
+  background: #F9F9F9;
 }
 
 
 h1, h2, p, a {
   color:#383635;
-  font-family: Arvo, sans-serif;
+  font-family: Roboto, sans-serif;
   text-align: center;
 }
 
