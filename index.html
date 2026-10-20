@@ -7,11 +7,17 @@
 <meta name="description" content="now i know you visited.">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="stylesheets/styles.css">
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-GM8S45TN7F"></script>
 </head>
 <body>
 <main>
   <p id="msg"></p>
+  <div id="ask" hidden>
+    <p>cookies?</p>
+    <div class="choices">
+      <button id="yes" class="btn" type="button">yes</button>
+      <button id="no" class="btn" type="button">no</button>
+    </div>
+  </div>
   <button id="again" class="btn" type="button" hidden>start over</button>
 </main>
 <h1 id="n" aria-label="000001"><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span></h1>
@@ -76,15 +82,23 @@ function pad(v) {
   return v < 0 ? '-' + s : s;
 }
 
-// Google Analytics, loaded for every visitor.
+// Google Analytics loads only after the visitor says yes to "cookies?".
 var GA_ID = 'G-GM8S45TN7F';
-window.dataLayer = window.dataLayer || [];
-function gtag() { dataLayer.push(arguments); }
-gtag('js', new Date());
-gtag('config', GA_ID);
+
+function startTracking() {
+  if (window.gtag) return;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', GA_ID);
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+}
 
 function track(name, params) {
-  gtag('event', name, params);
+  if (window.gtag) gtag('event', name, params);
 }
 
 function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -111,7 +125,25 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
     if (n === 100) track('story_complete', { playthrough: round });
   }
 
-  sendVisit();
+  // Stored answer: 'yes' or 'no'.
+  var consent = load('cookies');
+  var ask = document.getElementById('ask');
+  if (consent === 'yes') {
+    startTracking();
+    sendVisit();
+  } else if (consent !== 'no') {
+    ask.hidden = false;
+  }
+  document.getElementById('yes').addEventListener('click', function () {
+    save('cookies', 'yes');
+    ask.hidden = true;
+    startTracking();
+    sendVisit();
+  });
+  document.getElementById('no').addEventListener('click', function () {
+    save('cookies', 'no');
+    ask.hidden = true;
+  });
 
   var again = document.getElementById('again');
   if (n >= START_OVER_AT) again.hidden = false;
@@ -120,8 +152,12 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
     save('playthrough', round + 1);
     var done = false;
     function go() { if (!done) { done = true; location.reload(); } }
-    track('start_over', { playthrough: round, event_callback: go, event_timeout: 1000 });
-    setTimeout(go, 1200);
+    if (window.gtag) {
+      track('start_over', { playthrough: round, event_callback: go, event_timeout: 1000 });
+      setTimeout(go, 1200);
+    } else {
+      go();
+    }
   });
 })();
 </script>
