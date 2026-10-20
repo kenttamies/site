@@ -67,7 +67,6 @@ var STORY = {
   99:  'one more...',
   100: "you made it. there's no prize. but now i really know you visited."
 };
-var STORY_STARTS = 6;   // from here on the counter sits at the bottom
 var START_OVER_AT = 105;
 
 // What the counter shows. Visits 51-79 are the glitch; the real count keeps going underneath.
@@ -88,8 +87,8 @@ function pad(v) {
 // 'basic' = events only: no cookies, nothing stored, every page load is anonymous.
 var GA_ID = 'G-GM8S45TN7F';
 var QUESTIONS = {
-  full:  'can i spy on you (cookies)?',
-  basic: 'ok fine, no spying. only basic event tracking?'
+  full:  'can i spy on you?',
+  basic: 'ok fine no spying, just basic cookies?'
 };
 var tracking = null;
 
@@ -132,9 +131,6 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
 
   if (STORY[n]) document.getElementById('msg').textContent = STORY[n];
 
-  var root = document.documentElement;
-  function layout(asking) { root.classList.toggle('story', asking || n >= STORY_STARTS); }
-  layout(false);
 
   function sendVisit() {
     track('counter_view', { visit_number: n, playthrough: round });
@@ -151,7 +147,6 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
   function decide(answer) {
     save('consent', answer);
     ask.hidden = true;
-    layout(false);
     if (answer !== 'none') { startTracking(answer); sendVisit(); }
   }
 
@@ -161,7 +156,6 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
   } else if (consent !== 'none') {
     question.textContent = QUESTIONS.full;
     ask.hidden = false;
-    layout(true);
   }
   document.getElementById('yes').addEventListener('click', function () {
     decide(step);

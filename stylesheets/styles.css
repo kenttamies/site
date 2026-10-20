@@ -11,17 +11,26 @@
 
 [hidden] { display: none !important; }
 
+/* the counter sits in a fixed spot just below the middle; text appears above it */
 body {
   margin: 0;
-  min-height: 100svh;
+  height: 100svh;
   display: grid;
-  place-items: center;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 0.8fr);
+  justify-items: center;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--mono);
 }
 
-main { display: none; }
+main {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px 32px;
+}
 
 /* late-90s hit counter: one black tile per digit in a bevelled frame */
 h1 {
@@ -44,18 +53,6 @@ h1 span {
   background: linear-gradient(#262626, #0b0b0b 49%, #000 49%, #000 51%, #161616);
   border: 1px solid #3a3a3a;
 }
-
-/* once the story starts: message in the middle, counter at the bottom */
-.story body { grid-template-rows: 1fr auto; }
-.story main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 0 16px;
-}
-.story h1 { margin-bottom: 24px; }
 
 #msg {
   margin: 0;
