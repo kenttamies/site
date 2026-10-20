@@ -12,7 +12,7 @@
 <main>
   <p id="msg"></p>
   <div id="ask" hidden>
-    <p>can i count you?</p>
+    <p id="question"></p>
     <div class="choices">
       <button id="yes" class="btn" type="button">yes</button>
       <button id="no" class="btn" type="button">no</button>
@@ -83,15 +83,25 @@ function pad(v) {
   return v < 0 ? '-' + s : s;
 }
 
-// Google Analytics loads only after the visitor says yes.
+// Google Analytics loads only after the visitor agrees.
+// 'full'  = normal GA with cookies, so returning visitors are recognised.
+// 'basic' = events only: no cookies, nothing stored, every page load is anonymous.
 var GA_ID = 'G-GM8S45TN7F';
+var QUESTIONS = {
+  full:  'can i spy on you (cookies)?',
+  basic: 'ok fine, no spying. only basic event tracking?'
+};
+var tracking = null;
 
-function startTracking() {
+function startTracking(mode) {
   if (window.gtag) return;
+  tracking = mode;
   window.dataLayer = window.dataLayer || [];
   window.gtag = function () { dataLayer.push(arguments); };
   gtag('js', new Date());
-  gtag('config', GA_ID);
+  gtag('config', GA_ID, mode === 'basic'
+    ? { client_storage: 'none', allow_google_signals: false, allow_ad_personalization_signals: false }
+    : {});
   var s = document.createElement('script');
   s.async = true;
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
@@ -99,7 +109,9 @@ function startTracking() {
 }
 
 function track(name, params) {
-  if (window.gtag) gtag('event', name, params);
+  if (!window.gtag) return;
+  params.tracking = tracking;
+  gtag('event', name, params);
 }
 
 function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -128,26 +140,37 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
     if (n === 100) track('story_complete', { playthrough: round });
   }
 
+  // Stored answer: 'full', 'basic' or 'none'.
   var consent = load('consent');
   var ask = document.getElementById('ask');
-  if (consent === 'yes') {
-    startTracking();
+  var question = document.getElementById('question');
+  var step = 'full';
+
+  function decide(answer) {
+    save('consent', answer);
+    ask.hidden = true;
+    layout(false);
+    if (answer !== 'none') { startTracking(answer); sendVisit(); }
+  }
+
+  if (consent === 'full' || consent === 'basic') {
+    startTracking(consent);
     sendVisit();
-  } else if (consent !== 'no') {
+  } else if (consent !== 'none') {
+    question.textContent = QUESTIONS.full;
     ask.hidden = false;
     layout(true);
   }
   document.getElementById('yes').addEventListener('click', function () {
-    save('consent', 'yes');
-    ask.hidden = true;
-    layout(false);
-    startTracking();
-    sendVisit();
+    decide(step);
   });
   document.getElementById('no').addEventListener('click', function () {
-    save('consent', 'no');
-    ask.hidden = true;
-    layout(false);
+    if (step === 'full') {
+      step = 'basic';
+      question.textContent = QUESTIONS.basic;
+    } else {
+      decide('none');
+    }
   });
 
   var again = document.getElementById('again');
