@@ -62,17 +62,6 @@ h1 span {
 }
 #msg:empty { display: none; }
 
-#ask {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  font-size: 15px;
-  animation: fade 1.2s ease-out both;
-}
-#ask p { margin: 0; text-align: center; }
-.choices { display: flex; gap: 8px; }
-
 .btn {
   font: 15px var(--mono);
   color: var(--fg);
@@ -92,7 +81,7 @@ h1 span {
 @keyframes fade { from { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  #msg, #ask, #again { animation: none; }
+  #msg, #again { animation: none; }
 }
 
 ::selection { background: var(--fg); color: var(--bg); }
