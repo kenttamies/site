@@ -12,10 +12,11 @@
 <main><p id="msg"></p></main>
 <h1 id="n">000001</h1>
 <script>
-// The storyline: from visit `from` onwards, show `text`.
+// The storyline: on visit `at`, show `text` for that one visit only.
+// From the first message onwards the counter sits at the bottom.
 var STORY = [
-  { from: 6,  text: 'still here...?' },
-  { from: 11, text: 'you really like this page, huh..' }
+  { at: 6,  text: 'still here...?' },
+  { at: 11, text: 'you really like this page, huh..' }
 ];
 
 // Counts this visitor's visits in their own browser. Nothing is sent anywhere.
@@ -29,12 +30,10 @@ var STORY = [
   document.getElementById('n').textContent = String(n).padStart(6, '0');
   document.title = n + ' — kenttami.es';
 
-  var text = '';
-  STORY.forEach(function (s) { if (n >= s.from) text = s.text; });
-  if (text) {
-    document.getElementById('msg').textContent = text;
-    document.documentElement.classList.add('story');
-  }
+  STORY.forEach(function (s) {
+    if (n === s.at) document.getElementById('msg').textContent = s.text;
+  });
+  if (n >= STORY[0].at) document.documentElement.classList.add('story');
 })();
 </script>
 </body>
