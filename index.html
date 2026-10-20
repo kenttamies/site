@@ -83,23 +83,30 @@ function pad(v) {
 }
 
 // Google Analytics loads only after the visitor agrees.
-// 'full'  = normal GA with cookies, so returning visitors are recognised.
-// 'basic' = events only: no cookies, nothing stored, every page load is anonymous.
+// 'full'  = "can i spy on you?" yes: analytics and ad cookies, Google signals allowed.
+// 'basic' = "just cookies?" yes: analytics cookies only, no ad or cross-site features.
 var GA_ID = 'G-GM8S45TN7F';
 var QUESTIONS = {
   full:  'can i spy on you?',
-  basic: 'ok fine no spying, just basic cookies?'
+  basic: 'ok fine no spying, just cookies?'
 };
 var tracking = null;
 
 function startTracking(mode) {
   if (window.gtag) return;
   tracking = mode;
+  var ads = mode === 'full' ? 'granted' : 'denied';
   window.dataLayer = window.dataLayer || [];
   window.gtag = function () { dataLayer.push(arguments); };
+  gtag('consent', 'default', {
+    analytics_storage: 'granted',
+    ad_storage: ads,
+    ad_user_data: ads,
+    ad_personalization: ads
+  });
   gtag('js', new Date());
   gtag('config', GA_ID, mode === 'basic'
-    ? { client_storage: 'none', allow_google_signals: false, allow_ad_personalization_signals: false }
+    ? { allow_google_signals: false, allow_ad_personalization_signals: false }
     : {});
   var s = document.createElement('script');
   s.async = true;
