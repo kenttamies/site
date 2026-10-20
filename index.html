@@ -3,71 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Welcome to kenttami.es!!!</title>
-<meta name="description" content="hello. now i know you visited.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000080'/%3E%3Ctext x='8' y='13' text-anchor='middle' font-family='Times New Roman,serif' font-size='14' font-weight='bold' fill='%23ffff00'%3Ek%3C/text%3E%3C/svg%3E">
+<title>kenttami.es</title>
+<meta name="description" content="now i know you visited.">
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="stylesheets/styles.css">
 </head>
 <body>
-
-<div class="marquee"><span>*** Welcome to kenttami.es *** Thank you for visiting *** Please sign my guestbook (coming soon) *** This site is best viewed in Netscape Navigator 4.0 at 800x600 ***</span></div>
-
-<table class="page" cellpadding="0" cellspacing="0">
-<tr><td>
-
-<h1><span class="rainbow">hello.</span></h1>
-
-<p class="center">now i know you visited.</p>
-
-<div class="construction" role="img" aria-label="Under construction">
-  <span class="stripe"></span>
-  <b>&#128679; UNDER CONSTRUCTION &#128679;</b>
-  <span class="stripe"></span>
-</div>
-
-<hr>
-
-<h2>Links</h2>
-<ul>
-  <li><a href="https://www.linkedin.com/in/miikakenttamies/" rel="me">My LinkedIn page</a> <span class="new">NEW!</span></li>
-</ul>
-
-<hr>
-
-<p class="center">You have visited this page</p>
-<p class="center"><span class="counter" id="counter">000001</span></p>
-<p class="center small">time(s). And now i know it.</p>
-
-<hr>
-
-<p class="center small">
-  <span class="badge">Best viewed with<br><b>Netscape Navigator</b></span>
-  <span class="badge">800 x 600<br><b>256 colors</b></span>
-</p>
-
-<p class="center small">
-  [ <a href="https://kenttami.es/">Home</a> ]
-  [ <a href="https://www.linkedin.com/in/miikakenttamies/">Contact</a> ]
-</p>
-
-<address class="center small">&copy; 1999&ndash;<span id="year">2026</span> kenttami.es &middot; Last updated: <span id="updated">October 2026</span></address>
-
-</td></tr>
-</table>
-
+<main>
+  <h1 id="n" aria-live="polite">000001</h1>
+</main>
 <script>
-// Counts this visitor's own visits in their browser. Nothing is sent anywhere.
+// Counts this visitor's visits in their own browser. Nothing is sent anywhere.
 (function () {
   var n = 1;
   try {
     n = (parseInt(localStorage.getItem('visits'), 10) || 0) + 1;
     localStorage.setItem('visits', n);
   } catch (e) {}
-  document.getElementById('counter').textContent = String(n).padStart(6, '0');
-  document.getElementById('year').textContent = new Date().getFullYear();
-  var m = new Date(document.lastModified);
-  if (!isNaN(m)) document.getElementById('updated').textContent =
-    m.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  var el = document.getElementById('n');
+  el.textContent = String(n).padStart(6, '0');
+  document.title = n + ' — kenttami.es';
 })();
 </script>
 </body>
