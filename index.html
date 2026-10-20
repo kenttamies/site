@@ -9,15 +9,61 @@
 <link rel="stylesheet" href="stylesheets/styles.css">
 </head>
 <body>
-<main><p id="msg"></p></main>
+<main>
+  <p id="msg"></p>
+  <button id="again" type="button" hidden>start over</button>
+</main>
 <h1 id="n">000001</h1>
 <script>
-// The storyline: on visit `at`, show `text` for that one visit only.
-// From the first message onwards the counter sits at the bottom.
-var STORY = [
-  { at: 6,  text: 'still here...?' },
-  { at: 11, text: 'you really like this page, huh..' }
-];
+// Each message shows on that one visit only.
+var STORY = {
+  6:   'still here...?',
+  11:  'you really like this page, huh..',
+  15:  "i'm flattered. really.",
+  20:  "there's nothing else here. i checked.",
+  24:  "the number goes up. that's the whole thing.",
+  28:  'is this what you came for?',
+  33:  'your F5 key would like a word.',
+  37:  "i've started telling people about you.",
+  42:  '42. the answer to everything. you can stop now.',
+  47:  "ok. i'm a little worried.",
+  50:  'halfway to nothing in particular.',
+  51:  '...wait.',
+  52:  "that's not right.",
+  54:  "ok. you broke it. i hope you're happy.",
+  57:  "honestly? i'll take it. we're popular now.",
+  60:  "uh oh. it's going backwards.",
+  63:  "you're un-visiting. please stop.",
+  66:  "at this rate you'll never have been here.",
+  70:  'visit not found.',
+  73:  "i've called someone. they're on their way.",
+  76:  "they asked if i'd tried turning it off and on again.",
+  79:  "hold on. i think i've got it...",
+  80:  'fixed. where were we?',
+  83:  "let's never speak of this again.",
+  85:  'still no secret ending. or is there.',
+  90:  "ten more. don't you dare stop now.",
+  95:  "five. i can't watch.",
+  97:  'three.',
+  98:  'two.',
+  99:  'one more...',
+  100: "you made it. there's no prize. but now i really know you visited."
+};
+var STORY_STARTS = 6;   // from here on the counter sits at the bottom
+var START_OVER_AT = 105;
+
+// What the counter shows. Visits 51-79 are the glitch; the real count keeps going underneath.
+function shown(n) {
+  if (n >= 51 && n <= 59) return 734219 + (n - 51); // suddenly popular
+  if (n >= 60 && n <= 69) return -(n - 59);         // running backwards
+  if (n >= 70 && n <= 79) return 404;               // visit not found
+  return n;
+}
+
+function pad(v) {
+  var s = String(Math.abs(v)).padStart(6, '0');
+  return v < 0 ? '-' + s : s;
+}
 
 // Counts this visitor's visits in their own browser. Nothing is sent anywhere.
 (function () {
@@ -27,13 +73,19 @@ var STORY = [
     localStorage.setItem('visits', n);
   } catch (e) {}
 
-  document.getElementById('n').textContent = String(n).padStart(6, '0');
-  document.title = n + ' — kenttami.es';
+  var label = pad(shown(n));
+  document.getElementById('n').textContent = label;
+  document.title = label + ' — kenttami.es';
 
-  STORY.forEach(function (s) {
-    if (n === s.at) document.getElementById('msg').textContent = s.text;
+  if (STORY[n]) document.getElementById('msg').textContent = STORY[n];
+  if (n >= STORY_STARTS) document.documentElement.classList.add('story');
+
+  var again = document.getElementById('again');
+  if (n >= START_OVER_AT) again.hidden = false;
+  again.addEventListener('click', function () {
+    try { localStorage.removeItem('visits'); } catch (e) {}
+    location.reload();
   });
-  if (n >= STORY[0].at) document.documentElement.classList.add('story');
 })();
 </script>
 </body>

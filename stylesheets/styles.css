@@ -1,17 +1,24 @@
-:root { color-scheme: light dark; }
-
-html { background: #fff; color: #000; }
+:root {
+  --bg: #fff;
+  --fg: #000;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  color-scheme: light dark;
+}
 
 @media (prefers-color-scheme: dark) {
-  html { background: #000; color: #fff; }
+  :root { --bg: #000; --fg: #fff; }
 }
+
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
   min-height: 100svh;
   display: grid;
   place-items: center;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
 }
 
 main { display: none; }
@@ -25,23 +32,42 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-/* once the storyline starts: message in the middle, counter at the bottom */
+/* once the story starts: message in the middle, counter at the bottom */
 .story body { grid-template-rows: 1fr auto; }
-.story main { display: grid; place-items: center; }
-.story h1 { padding: 0 16px 24px; }
+.story main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 16px;
+}
+.story h1 { padding-bottom: 24px; }
 
 #msg {
   margin: 0;
-  padding: 0 16px;
   font-size: 15px;
   text-align: center;
   animation: fade 1.2s ease-out both;
 }
+#msg:empty { display: none; }
+
+#again {
+  font: 15px var(--mono);
+  color: var(--fg);
+  background: none;
+  border: 1px solid var(--fg);
+  padding: 8px 16px;
+  cursor: pointer;
+  animation: fade 1.2s ease-out both;
+}
+#again:hover { background: var(--fg); color: var(--bg); }
+#again:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
 
 @keyframes fade { from { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  #msg { animation: none; }
+  #msg, #again { animation: none; }
 }
 
-::selection { background: currentColor; color: Canvas; }
+::selection { background: var(--fg); color: var(--bg); }
