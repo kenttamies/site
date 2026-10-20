@@ -9,10 +9,15 @@
 <link rel="stylesheet" href="stylesheets/styles.css">
 </head>
 <body>
-<main>
-  <h1 id="n" aria-live="polite">000001</h1>
-</main>
+<main><p id="msg"></p></main>
+<h1 id="n">000001</h1>
 <script>
+// The storyline: from visit `from` onwards, show `text`.
+var STORY = [
+  { from: 6,  text: 'still here...?' },
+  { from: 11, text: 'you really like this page, huh..' }
+];
+
 // Counts this visitor's visits in their own browser. Nothing is sent anywhere.
 (function () {
   var n = 1;
@@ -20,9 +25,16 @@
     n = (parseInt(localStorage.getItem('visits'), 10) || 0) + 1;
     localStorage.setItem('visits', n);
   } catch (e) {}
-  var el = document.getElementById('n');
-  el.textContent = String(n).padStart(6, '0');
+
+  document.getElementById('n').textContent = String(n).padStart(6, '0');
   document.title = n + ' — kenttami.es';
+
+  var text = '';
+  STORY.forEach(function (s) { if (n >= s.from) text = s.text; });
+  if (text) {
+    document.getElementById('msg').textContent = text;
+    document.documentElement.classList.add('story');
+  }
 })();
 </script>
 </body>
