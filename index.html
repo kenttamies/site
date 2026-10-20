@@ -15,6 +15,17 @@
 </main>
 <h1 id="n">000001</h1>
 <script>
+// Names the visitor's own way of refreshing.
+function refreshKeyLine() {
+  var ua = navigator.userAgent || '';
+  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1; // iPads report as Mac
+  var mobile = (navigator.userAgentData && navigator.userAgentData.mobile) ||
+               /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || touchMac;
+  if (mobile) return 'your refresh finger would like a word.';
+  if (/Mac/.test(navigator.platform || ua)) return 'your \u2318R would like a word.';
+  return 'your F5 key would like a word.';
+}
+
 // Each message shows on that one visit only.
 var STORY = {
   6:   'still here...?',
@@ -23,7 +34,7 @@ var STORY = {
   20:  "there's nothing else here. i checked.",
   24:  "the number goes up. that's the whole thing.",
   28:  'is this what you came for?',
-  33:  'your F5 key would like a word.',
+  33:  refreshKeyLine(),
   37:  "i've started telling people about you.",
   42:  '42. the answer to everything. you can stop now.',
   47:  "ok. i'm a little worried.",
