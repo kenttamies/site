@@ -58,7 +58,7 @@ h1 span {
   margin: 0;
   font-size: 15px;
   text-align: center;
-  animation: fade 1.2s ease-out both;
+  animation: fade 0.6s ease-out both;
 }
 #msg:empty { display: none; }
 
@@ -68,7 +68,7 @@ h1 span {
   align-items: center;
   gap: 16px;
   font-size: 15px;
-  animation: fade 1.2s ease-out both;
+  animation: fade 0.6s ease-out both;
 }
 #ask p { margin: 0; text-align: center; }
 .choices { display: flex; gap: 8px; }
@@ -83,7 +83,7 @@ h1 span {
   -webkit-tap-highlight-color: transparent;
 }
 .btn:focus:not(:focus-visible) { outline: none; }
-#again { animation: fade 1.2s ease-out both; }
+#again { animation: fade 0.6s ease-out both; }
 @media (hover: hover) {
   .btn:hover { background: var(--fg); color: var(--bg); }
 }
