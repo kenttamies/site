@@ -20,7 +20,7 @@
   </div>
   <button id="again" class="btn" type="button" hidden>start over</button>
 </main>
-<h1 id="n">000001</h1>
+<h1 id="n" aria-label="000001"><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span></h1>
 <script>
 // Names the visitor's own way of refreshing.
 function refreshKeyLine() {
@@ -125,7 +125,9 @@ function forget(key) { try { localStorage.removeItem(key); } catch (e) {} }
   var round = parseInt(load('playthrough'), 10) || 1;
 
   var label = pad(shown(n));
-  document.getElementById('n').textContent = label;
+  var counter = document.getElementById('n');
+  counter.innerHTML = label.split('').map(function (c) { return '<span>' + c + '</span>'; }).join('');
+  counter.setAttribute('aria-label', label);
   document.title = label + ' — kenttami.es';
 
   if (STORY[n]) document.getElementById('msg').textContent = STORY[n];
