@@ -60,7 +60,7 @@ h1 {
   font-size: 15px;
   animation: fade 1.2s ease-out both;
 }
-#ask p { margin: 0; }
+#ask p { margin: 0; text-align: center; }
 .choices { display: flex; gap: 8px; }
 
 .btn {
@@ -70,9 +70,13 @@ h1 {
   border: 1px solid var(--fg);
   padding: 8px 16px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
+.btn:focus:not(:focus-visible) { outline: none; }
 #again { animation: fade 1.2s ease-out both; }
-.btn:hover { background: var(--fg); color: var(--bg); }
+@media (hover: hover) {
+  .btn:hover { background: var(--fg); color: var(--bg); }
+}
 .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
 
 @keyframes fade { from { opacity: 0; } }
