@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kenttami.es</title>
+<meta name="description" content="now i know you visited.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="stylesheets/styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1036677210293656"
+     crossorigin="anonymous"></script>
+</head>
+<body class="home">
+<main>
+  <div id="ask" hidden>
+    <p>cookies?</p>
+    <div class="choices">
+      <button id="yes" class="btn" type="button">yes</button>
+      <button id="no" class="btn" type="button">no</button>
+    </div>
+  </div>
+  <p id="msg"></p>
+</main>
+<nav class="levels" aria-label="levels" hidden>
+  <a id="l1" class="level" href="1/"><b>level 1</b><span id="s1">new</span></a>
+  <a id="l2" class="level" href="2/" hidden><b>level 2</b><span id="s2">new</span></a>
+  <a id="l3" class="level soon" href="3/" hidden><b>level 3</b><span id="s3">october 24th</span></a>
+</nav>
+<script>
+(function () {
+  var visits = parseInt(load('visits'), 10) || 0;
+  var l2 = null;
+  try { l2 = JSON.parse(load('l2')); } catch (e) {}
+
+  // first-time visitors skip the picker and land straight in level 1
+  var returning = visits > 0 || levelDone(1) || l2 !== null;
+  if (!returning) {
+    location.replace('1/');
+    return;
+  }
+  // returning visitors see the levels they've reached, and no further
+  document.querySelector('.levels').hidden = false;
+
+  document.getElementById('s1').textContent =
+    levelDone(1) ? 'done' : visits > 0 ? 'in progress' : 'new';
+
+  var link2 = document.getElementById('l2');
+  if (levelDone(1)) {
+    link2.hidden = false;
+    document.getElementById('s2').textContent = levelDone(2) ? 'done' : !l2 ? 'new' : 'in progress';
+  }
+
+  // level 3: counts down to its release, then opens by itself
+  var link3 = document.getElementById('l3');
+  var s3 = document.getElementById('s3');
+  var l3 = null;
+  try { l3 = JSON.parse(load('l3')); } catch (e) {}
+  if (levelDone(2)) link3.hidden = false;
+  function level3Tile() {
+    if (level3Open()) {
+      link3.classList.remove('soon');
+      s3.textContent = levelDone(3) ? 'done' : !l3 ? 'new' : 'in progress';
+      return true;
+    }
+    s3.textContent = untilRelease();
+    return false;
+  }
+  if (!level3Tile()) {
+    var tick = setInterval(function () { if (level3Tile()) clearInterval(tick); }, 1000);
+  }
+  link3.addEventListener('click', function (e) { if (!level3Open()) e.preventDefault(); });
+
+  consent(function () { track('levels_view', { l1_done: level1Done() ? 'yes' : 'no' }); });
+})();
+</script>
+</body>
+</html>

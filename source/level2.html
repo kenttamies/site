@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kenttami.es/2</title>
+<meta name="description" content="level 2.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../stylesheets/styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1036677210293656"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+<a id="back" href="../">&larr; levels</a>
+<main>
+  <p id="msg"></p>
+  <p id="sub" hidden></p>
+  <div id="ask" hidden>
+    <p>cookies?</p>
+    <div class="choices">
+      <button id="yes" class="btn" type="button">yes</button>
+      <button id="no" class="btn" type="button">no</button>
+    </div>
+  </div>
+  <div class="row">
+    <a id="home" class="btn" href="../" hidden>go back</a>
+    <button id="resume" class="btn" type="button" hidden>continue</button>
+    <button id="start" class="btn" type="button" hidden>start level</button>
+  </div>
+</main>
+<h1 id="n" aria-label="000000"><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span></h1>
+<div id="panic" hidden><button id="red" type="button" aria-label="big red button">press</button></div>
+<script>
+// Level 2: the counter stops listening.
+// 1. refresh works like level 1, up to 20.
+// 2. then it freezes. the way on is to leave the page alone: it starts ticking by itself.
+// 3. at 50 it freezes again. after 12 refreshes it runs away on its own, counting faster and faster.
+// 4. a big red button appears. mashing it slows the numbers down until they stop at 67.
+// 5. relief, then the facepalm. refreshing once more makes it 68 and the level ends.
+
+var REFRESH_MSG = {
+  1: 'level 2. you know the drill.',
+  5: 'yep. same thing.',
+  10: 'told you.',
+  15: 'almost too easy.',
+  20: 'ok.'
+};
+var FROZEN_HINTS = {            // keyed by refreshes since the counter froze
+  8: 'nope.',
+  13: "refreshing isn't the thing this time.",
+  18: "you're trying very hard.",
+  23: 'maybe try less.',
+  28: onMobile() ? 'put the phone down. i dare you.' : 'hands off the mouse. and the keyboard. i dare you.'
+};
+var WAIT_MSG = {                // keyed by counter while it ticks on its own
+  22: 'there you go.',
+  26: 'look at you, being patient.',
+  31: 'this is the slowest game ever made.',
+  35: 'you could be doing anything right now.',
+  38: "...and you're doing this. respect.",
+  44: 'almost there. wherever "there" is.'
+};
+var BORED = "ok. that's enough of that.";
+var STUCK_HINTS = {             // keyed by refreshes while stuck at 50
+  4: 'hm.',
+  8: 'do you hear that?',
+  11: 'something feels off.'
+};
+var RUNAWAY_AFTER = 12;         // refreshes at 50 before it runs away
+
+// the runaway: [seconds after it starts, message]
+var ALARM = [
+  [0, 'huh.'],
+  [4, 'wait. why is it doing that.'],
+  [8, "that's faster than it should be."],
+  [11, 'ok this is not me.'],
+  [14, "IT'S NOT STOPPING."],
+  [17, 'THE NUMBERS ARE LEAKING.'],
+  [20, 'quick, press this button!']
+];
+var BUTTON_AT = 20;             // seconds in: the big red button appears
+var MASH_MSG = [                // [how far it has slowed down (0-1), message]
+  [0.08, 'MORE.'],
+  [0.3, 'KEEP GOING.'],
+  [0.55, "it's working!"],
+  [0.8, 'almost...']
+];
+var FACEPALM = '\uD83E\uDD26';
+var AFTERMATH = [               // [seconds after it stops, message]
+  [0, '...it stopped.'],
+  [2.5, 'thank you. THANK YOU.'],
+  [5, 'that was close. the whole internet nearly counted itself to death.'],
+  [9, "you saved everything. you're a hero."],
+  [12.5, 'wait.'],
+  [14.5, '...it stopped at .....'],
+  [17, FACEPALM],
+  [19.5, 'why does this thing still exist.']
+];
+var STOP_AT = 67;
+
+var IDLE_MS = 15000;            // how long to leave it alone before it starts ticking
+var TICK_MS = 3000;
+var FROZEN_AT = 20, WAIT_END = 50;
+var PRESS = 0.025;              // how much one press slows it down (about 60 fast presses)
+var CREEP = 0.05;               // how much it speeds back up per second without pressing
+var LANDING_MS = 4500;          // the final roll to 67 once it's calm
+
+(function () {
+  var msg = document.getElementById('msg');
+  var sub = document.getElementById('sub');
+  var counter = document.getElementById('n');
+  var home = document.getElementById('home');
+  var panic = document.getElementById('panic');
+  var red = document.getElementById('red');
+
+  function say(text) {
+    if (msg.textContent === (text || '')) return;
+    msg.textContent = text || '';
+    msg.classList.toggle('big', text === FACEPALM);
+    msg.style.animation = 'none';
+    void msg.offsetWidth;
+    msg.style.animation = '';
+  }
+  function show(v) {
+    renderCounter(counter, pad(v));
+    document.title = pad(v) + ' — kenttami.es/2';
+  }
+  function flash(label) {   // fast updates: change digits in place
+    var spans = counter.children;
+    for (var i = 0; i < spans.length; i++) spans[i].textContent = label[i];
+    counter.setAttribute('aria-label', label);
+  }
+
+  if (!level1Done()) {
+    show(0);
+    say('nice try. finish level 1 first.');
+    consent(function () { track('l2_locked'); });
+    return;
+  }
+
+  var s = null;
+  try { s = JSON.parse(load('l2')); } catch (e) {}
+  if (!s) s = { phase: 'refresh', count: 0, dead: 0, stuck: 0, presses: 0 };
+  function store() { save('l2', JSON.stringify(s)); }
+
+  var startBtn = document.getElementById('start');
+  var resumeBtn = document.getElementById('resume');
+  var continuing = takeFlag('l2continue');
+  var starting = takeFlag('l2start');
+  var cameBack = openedFresh() && !continuing && !starting;
+  var inProgress = load('l2') !== null && s.phase !== 'solved' && s.count > 0;
+
+  // coming back part-way through (not a refresh): continue or start over
+  if (cameBack && inProgress) {
+    show(s.phase === 'stopped' ? STOP_AT : s.count);
+    offerResume(2, "oh. you're back.", function () { forget('l2'); });
+    return;
+  }
+
+  // the end screen's "start level" button
+  startBtn.addEventListener('click', function () {
+    track('level_restart', { level: 2 });
+    forget('l2');
+    setFlag('l2start');
+    location.reload();
+  });
+
+  // finished earlier and nothing in progress: done screen
+  if (cameBack && levelDone(2) && s.phase !== 'solved') {
+    show(STOP_AT + 1);
+    say('level 2 done.');
+    startBtn.hidden = false;
+    consent(function () { track('level_done_view', { level: 2 }); });
+    return;
+  }
+
+  var events = [];
+  function log(name, params) { events.push([name, params]); track(name, params); }
+
+  // ---- what happens on this page load ("continue" changes nothing) ----
+  var startRunaway = false;
+  if (continuing) {
+    if (s.phase === 'refresh') say(REFRESH_MSG[s.count]);
+  } else if (s.phase === 'refresh') {
+    s.count++;
+    if (s.count > FROZEN_AT) {
+      s.phase = 'frozen'; s.count = FROZEN_AT; s.dead = 1;
+      log('l2_frozen');
+    } else {
+      say(REFRESH_MSG[s.count]);
+    }
+  } else if (s.phase === 'frozen') {
+    s.dead++;
+  } else if (s.phase === 'waiting') {
+    s.count = Math.max(FROZEN_AT, s.count - 5);
+    say('you touched it. patience resets.');
+  } else if (s.phase === 'stuck') {
+    s.stuck++;
+    if (s.stuck >= RUNAWAY_AFTER) { s.phase = 'runaway'; startRunaway = true; }
+  } else if (s.phase === 'stopped' && s.afterDone) {
+    s.phase = 'solved';
+    markDone(2);
+    log('l2_solved', { presses: s.presses });
+  }
+  store();
+  show(s.phase === 'solved' ? STOP_AT + 1 : s.phase === 'stopped' ? STOP_AT : s.count);
+
+  // ---- leave it alone ----
+  function frozenHint() {
+    if (FROZEN_HINTS[s.dead]) return FROZEN_HINTS[s.dead];
+    if (s.dead > 28 && (s.dead - 28) % 5 === 0) return FROZEN_HINTS[28];
+    return '';
+  }
+  if (s.phase === 'frozen' && !continuing) say(frozenHint());
+
+  var lastTouch = Date.now(), lastTick = 0, idleTimer = null;
+  ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function (t) {
+    window.addEventListener(t, function () { lastTouch = Date.now(); }, { passive: true });
+  });
+  function watchIdle() {
+    idleTimer = setInterval(function () {
+      if (document.visibilityState !== 'visible') { lastTouch = Date.now(); return; }
+      var now = Date.now();
+      if (now - lastTouch < IDLE_MS) return;
+      if (s.phase === 'frozen') {
+        s.phase = 'waiting';
+        log('l2_wait_found', { refreshes_frozen: s.dead });
+        lastTick = 0;
+      }
+      if (s.phase !== 'waiting' || now - lastTick < TICK_MS) return;
+      lastTick = now;
+      s.count++;
+      show(s.count);
+      if (WAIT_MSG[s.count]) say(WAIT_MSG[s.count]);
+      if (s.count >= WAIT_END) {
+        s.phase = 'stuck';
+        s.stuck = 0;
+        say(BORED);
+        clearInterval(idleTimer);
+      }
+      store();
+    }, 250);
+  }
+
+  // ---- the runaway and the big red button ----
+  // speed in numbers per second: starts at about 1 and keeps multiplying
+  function speed(secs) { return Math.min(60000, 0.9 * Math.pow(1.45, secs)); }
+
+  var t0 = 0, value = WAIT_END, alarmIndex = 0, lastFrame = 0;
+  var calm = 0, mashing = false, mashIndex = 0, firstPress = 0;
+  var landing = null;
+
+  // A refresh mid-runaway picks up where it was: same second, same number, same calm.
+  // Progress is saved a few times a second and when the page is left.
+  function saveRunaway(secs) {
+    s.rt = Math.round(secs * 10) / 10;
+    s.value = Math.floor(value);
+    s.calm = Math.round(calm * 1000) / 1000;
+    s.landing = !!landing;
+    store();
+  }
+
+  function runaway(resumed) {
+    var secs = resumed ? (s.rt || 0) : 0;
+    t0 = performance.now() - secs * 1000;
+    value = resumed && s.value ? s.value : WAIT_END;
+    calm = resumed ? (s.calm || 0) : 0;
+    alarmIndex = 0;
+    while (alarmIndex < ALARM.length && secs >= ALARM[alarmIndex][0]) alarmIndex++;
+    while (mashIndex < MASH_MSG.length && calm >= MASH_MSG[mashIndex][0]) mashIndex++;
+    if (resumed) {
+      if (secs >= BUTTON_AT) { say('nope. still going. PRESS THE BUTTON!'); showButton(); }
+      else if (alarmIndex > 0) say(ALARM[alarmIndex - 1][1]);
+      if (s.landing) land();
+    }
+    log('l2_runaway', { resumed: resumed ? 'yes' : 'no' });
+    window.addEventListener('pagehide', function () {
+      if (s.phase === 'runaway') saveRunaway((performance.now() - t0) / 1000);
+    });
+    requestAnimationFrame(frame);
+  }
+
+  function showButton() {
+    if (!panic.hidden || s.phase !== 'runaway') return;
+    panic.hidden = false;
+    mashing = true;
+  }
+
+  function frame(now) {
+    if (s.phase !== 'runaway') return;
+    var secs = (now - t0) / 1000;
+    var dt = lastFrame ? Math.min(0.1, (now - lastFrame) / 1000) : 0;
+    lastFrame = now;
+
+    if (landing) {
+      // ease out: fast at first, the last few numbers tick slowly into 67
+      var k = Math.min(1, (now - landing.start) / LANDING_MS);
+      var eased = 1 - Math.pow(1 - k, 4);
+      flash(pad((landing.from + Math.round(landing.distance * eased)) % 1000000));
+      if (k >= 1) return stopped();
+      return requestAnimationFrame(frame);
+    }
+
+    while (alarmIndex < ALARM.length && secs >= ALARM[alarmIndex][0]) say(ALARM[alarmIndex++][1]);
+    if (secs >= BUTTON_AT) showButton();
+
+    if (mashing) {
+      calm = Math.max(0, calm - CREEP * dt);
+      while (mashIndex < MASH_MSG.length && calm >= MASH_MSG[mashIndex][0]) say(MASH_MSG[mashIndex++][1]);
+    }
+
+    // pressing slows it down: at full calm it would be down to a crawl
+    value += speed(secs) * Math.pow(1 - calm, 2) * dt;
+    flash(pad(Math.floor(value) % 1000000));
+    if (now - (frame.saved || 0) > 300) { frame.saved = now; saveRunaway(secs); }
+    requestAnimationFrame(frame);
+  }
+
+  function land() {
+    mashing = false;
+    panic.hidden = true;
+    var from = Math.floor(value) % 1000000;
+    var distance = (STOP_AT - from + 1000000) % 1000000;
+    if (distance < 40) distance += 1000000;
+    landing = { start: performance.now(), from: from, distance: distance };
+    say('...');
+    saveRunaway((performance.now() - t0) / 1000);
+  }
+
+  red.addEventListener('click', function () {
+    if (!mashing || s.phase !== 'runaway') return;
+    if (!firstPress) { firstPress = Date.now(); log('l2_button_found'); }
+    s.presses++;
+    calm = Math.min(1, calm + PRESS);
+    if (calm >= 1) land();
+    red.classList.add('hit');
+    clearTimeout(red.t);
+    red.t = setTimeout(function () { red.classList.remove('hit'); }, 90);
+  });
+
+  function stopped() {
+    landing = null;
+    s.phase = 'stopped';
+    s.after = 0;
+    s.afterDone = false;
+    store();
+    show(STOP_AT);
+    counter.classList.add('win');
+    log('l2_stopped', { presses: s.presses, seconds: Math.round((Date.now() - firstPress) / 1000) });
+    aftermath(0);
+  }
+
+  // The thank-you lines play in order. Each one is saved as it's shown, so a refresh
+  // picks up at the next line, and only a refresh after the last one makes it 68.
+  function aftermath(from) {
+    AFTERMATH.forEach(function (step, i) {
+      if (step[0] < from) return;
+      setTimeout(function () {
+        if (s.phase !== 'stopped') return;
+        say(step[1]);
+        s.after = step[0];
+        if (i === AFTERMATH.length - 1) s.afterDone = true;
+        store();
+      }, (step[0] - from) * 1000);
+    });
+  }
+
+  function showEnd() {
+    say("68. oh thank goodness. we're good. we're so good.");
+    sub.textContent = 'level 2 done.';
+    sub.hidden = false;
+    home.hidden = false;
+    startBtn.hidden = false;
+  }
+
+  // ---- resume where they are ----
+  if (s.phase === 'frozen' || s.phase === 'waiting') watchIdle();
+  if (s.phase === 'stuck') say(STUCK_HINTS[s.stuck] || (s.stuck === 0 ? BORED : ''));
+  if (s.phase === 'runaway') { store(); runaway(!startRunaway); }
+  if (s.phase === 'stopped') {
+    counter.classList.add('win');
+    var seen = AFTERMATH.filter(function (step) { return step[0] <= (s.after || 0); });
+    say(seen.length ? seen[seen.length - 1][1] : AFTERMATH[0][1]);
+    var next = AFTERMATH.filter(function (step) { return step[0] > (s.after || 0); })[0];
+    if (next) setTimeout(function () { aftermath(next[0]); }, 1500);
+  }
+  if (s.phase === 'stuck' && continuing) say(BORED);
+  if (s.phase === 'solved') showEnd();
+
+  consent(function () {
+    track('l2_view', { phase: s.phase, count: s.count });
+    events.forEach(function (e) { track(e[0], e[1]); });
+  });
+})();
+</script>
+</body>
+</html>

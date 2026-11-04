@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kenttami.es/3</title>
+<meta name="description" content="level 3.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../stylesheets/styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1036677210293656"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+<a id="back" href="../">&larr; levels</a>
+<main>
+  <p id="msg"></p>
+  <p id="sub" hidden></p>
+  <div id="warn" class="ask" hidden>
+    <p>level 3 is difficult. are you sure you want to continue?</p>
+    <div class="choices">
+      <button id="go" class="btn" type="button">yes</button>
+      <button id="nope" class="btn" type="button">no</button>
+    </div>
+  </div>
+  <div id="ask" hidden>
+    <p>cookies?</p>
+    <div class="choices">
+      <button id="yes" class="btn" type="button">yes</button>
+      <button id="no" class="btn" type="button">no</button>
+    </div>
+  </div>
+  <div class="row">
+    <a id="home" class="btn" href="../" hidden>go back</a>
+    <button id="resume" class="btn" type="button" hidden>continue</button>
+    <button id="start" class="btn" type="button" hidden>start level</button>
+  </div>
+</main>
+<h1 id="n" class="dials" aria-label="000000"><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span></h1>
+<script>
+// Level 3: counting with fingers.
+// Refreshing does nothing. Each digit is a dial: tap it and it goes up by one, 9 wraps to 0.
+// Nothing carries by itself, so going from 9 to 10 means tapping the dial on the left yourself.
+// A wrong tap stays wrong: dials only go up, so you have to tap your way back round.
+// The game is a patient, slightly condescending teacher. It ends at 42.
+//
+// Flow: teach the dials from 0 to 20 (carrying, the 13-19 distraction, the 19 trap),
+// then a pop quiz answered on the same dials: simple sums, then years, then
+// "what is the meaning of life?" -> 42.
+//
+// Older phases, switched off for now (their numbers are set to Infinity below):
+//   0-22   normal dials
+//   23-30  blindfold: every digit shows "?", you count from memory. it comes off at 31.
+//   32-41  randomizer: a tap shows a random digit. the right one is rigged to come up within
+//          3-8 taps, with a confetti burst from that dial; a finished number gets a big
+//          confetti-and-lasers blast. tapping a dial that was already right scrambles it.
+
+var GOAL = 42;
+var QUIZ_FROM = 20;              // the count where teaching ends and the quiz starts
+var QUIZ_INTRO = "ok, you can count. barely. pop quiz!";
+var THIS_YEAR = new Date().getFullYear();
+var QUIZ = [
+  // simple sums
+  { q: "what's 2 + 2?", a: 4, h: ['count on your fingers. you have ten.', "it's 4, sweetie."] },
+  { q: '7 + 5?', a: 12, h: ['more than ten. remember carrying the one?', 'twelve.'] },
+  { q: '15 - 6?', a: 9, h: ['take six away from fifteen.', "nine. it's nine."] },
+  // notes: remarks under the question at fixed times (seconds) after it appears. the normal hints wait until after them.
+  { q: '3 \u00D7 8?', a: 24, h: ['three eights. or eight threes.', 'twenty-four.'],
+    notes: [[0, "maths, and nobody's even grading you."], [5, "you'll need more than 10 fingers for this one."], [10, "you'll need your toes also. maybe."]] },
+  // years
+  { q: 'now some history. answers are years. what year did people first walk on the moon?', a: 1969, h: ['the late sixties. big dials too, sweetie.', '1969.'] },
+  { q: 'the titanic sank in...', a: 1912, h: ['early 1900s. it was very cold.', '1912.'] },
+  { q: 'the berlin wall came down in...', a: 1989, h: ['the late eighties.', '1989.'] },
+  { q: 'the first iphone came out in...', a: 2007, h: ['the 2000s. before phones were your whole personality.', '2007.'] },
+  { q: 'and what year is it now?', a: THIS_YEAR, h: ['look at a calendar, sweetie.', String(THIS_YEAR) + '.'] },
+  // the last one
+  // the twist: the last dial has no 2, and gets an empty slot after 9. so a plain 000042 can't
+  // be made: the answer is 42 one place to the left, with the empty slot last: 0 0 0 4 2 [ ].
+  // flip: a hint shown once the player has been tapping on this question for that many seconds.
+  { q: 'last one. what is the meaning of life?', a: 42, slot: true,
+    h: ["you've seen it before. twice."],
+    flip: { after: 15, text: "Answer to the Ultimate Question of Life, the Universe, and Everything. It's 42! You know the answer now. Google it." } }
+];
+var SLOT_ANSWER = [0, 0, 0, 4, 2, null];
+var SLOT_FOUND = 'oh. that one has an empty slot. how mysterious.';
+var SLOT_PLAIN = "that's 42. but is it THE meaning of life?";   // only if the dial already showed 2
+var SLOT_NO_TWO = 'huh. where did the 2 go?';
+var NO_TWO_ON_SKIP = 3;          // said on the third time the dial jumps from 1 to 3
+var QUIZ_YES = ['correct!', 'look at you.', 'yes! gold star.', "correct. i'm shocked.", 'right again. are you cheating?'];
+var QUIZ_FINAL = '42. the meaning of life. you knew it all along.';
+var END_PAUSE_MS = 5000;        // pause before "level 3 done." fades in
+var BACK_PAUSE_MS = 2000;       // then this much longer before "go back"
+var HINT_AFTER_MS = 10000;       // the next hint comes this long after the question or the last hint,
+                                 // whether the player is tapping away or sitting still
+var HINT_GAP_MS = 5000;          // at least this long between any two hints or remarks
+var SCRIPT = {
+  0: "level 3. today we're learning to count.",
+  1: 'one! that\'s a one. can you say "one"?',
+  2: "two. you're a natural.",
+  3: "three. we're all very proud of you.",
+  4: 'four. that\'s one more than three. math!',
+  5: 'five. like fingers on a hand. go on, check.',
+  6: 'six. remember six? "still here...?" good times.',
+  7: 'seven. lucky seven.',
+  8: 'eight. sit up straight.',
+  9: 'nine. careful now. the next one is a big one.',
+  10: "TEN! you carried the one! you won't remember this, but it's a big day.",
+  11: "eleven. it's like one, but taller.",
+  12: 'twelve. a dozen. like eggs.',
+  // the teacher gets distracted, on purpose
+  13: 'thirteen. oh! did i tell you about my weekend?',
+  14: 'so i go to the shop, right,',
+  15: "and they're OUT of oat milk. out!",
+  16: "the cashier goes \"have you tried almond?\"",
+  17: 'almond. do i look like an almond person to you?',
+  18: '...sorry. where were we? oh. right. counting.',
+  19: 'nineteen. anyway, then the bus was late, and the driver—',
+  20: "twenty! you weren't even listening, were you. good.",
+  21: 'twenty-one. look at you, all grown up.',
+  22: "twenty-two. you're getting very good at this.",
+  // blindfold
+  23: "twenty-three. you're getting cocky. let's see you do it without looking.",
+  25: 'mm-hm.',
+  26: "i can't see it either, if that helps.",
+  28: 'still counting? good. out loud is allowed.',
+  29: 'careful. you know what comes after nine.',
+  30: "was that thirty? i genuinely don't know.",
+  31: "ta-da. thirty-one! you did it with your eyes closed. well, mine.",
+  32: "thirty-two. ok. something's off with the dials. try one.",
+  // randomizer
+  33: 'thirty-three. got there eventually.',
+  34: "the dials are just guessing now. so are you.",
+  36: 'patience. like waiting for a bus.',
+  38: "you're basically gambling now. don't tell your parents.",
+  39: 'thirty-nine. the next one needs two dials. good luck.',
+  40: "forty. that took a while, didn't it.",
+  41: 'forty-one. one more. make it a good one.',
+  42: QUIZ_FINAL
+};
+var REFRESH_JOKES = [
+  "no no. we don't refresh anymore. we use our fingers.",
+  "refreshing doesn't count. literally.",
+  'same page. same you. tap a number.',
+  'i can do this all day, sweetie.'
+];
+// nudges before the first tap, in seconds after the lesson starts
+var IDLE_HINTS = [[15, "this is a number. you're allowed to touch it."], [30, 'the little one. on the right.']];
+// carry hints, keyed by wrong taps since the ones dial wrapped. 'w' wiggles the tens dial.
+var CARRY_HINTS = {
+  9:  { 0: "zero? we went backwards. that's not counting.", 3: 'numbers have neighbours, you know.',
+        5: 'the one on the left is feeling left out.', 8: 'tap. the. other. one.', w: 8 },
+  19: { 0: "HA. gotcha. ten? not so good at counting when someone's talking, are we.",
+        3: 'focus, sweetie. the other dial. like last time.' },
+  29: {}                                   // blindfolded: the teacher can't see either
+};
+// blindfold
+var BLIND_FROM = Infinity, BLIND_UNTIL = Infinity;   // switched off in the quiz flow
+var BLIND_WRONG = "something went wrong. i can feel it.";
+var PEEK_AFTER = 5;                        // wrong taps before a peek
+var PEEK = 'fine. one peek.';
+var BLIND_AGAIN = 'back on track. blindfold back on.';
+// randomizer
+var RANDOM_FROM = Infinity, RANDOM_UNTIL = Infinity; // switched off in the quiz flow
+var SPIN_MIN = 3, SPIN_MAX = 8;            // taps until the right digit comes up
+var RANDOM_FIRST = 'uh oh. the dials have gone a bit silly.';
+var RANDOM_MISS = ['keep going.', "it'll come round.", 'any minute now.', 'so close. probably.'];
+var SCRAMBLED = 'you broke a perfectly good number.';
+// lock
+var LOCK_FROM = Infinity;              // the lock phase is switched off for now
+var LOCK_SHOWS = '\uD83D\uDD12';           // the lock symbol on the extra dial
+var LOCK_NEW = 'new rule. lock it in first. the empty one, on the right.';
+var LOCK_FIRST = 'lock it in first, sweetie.';
+var LOCKED = 'locked. now the two next to it.';
+var LOCK_AGAIN = 'again. lock first.';
+// chatter while counting 13-19, every few seconds, to pull attention away
+var CHATTER_FROM = 13, CHATTER_UNTIL = 20, CHATTER_MS = 5500;
+var CHATTER = [
+  'the bus driver had a moustache. a big one.',
+  'not important. just a very big moustache.',
+  'have you ever had a really good sandwich?',
+  'anyway.',
+  'wait, what number are we on?',
+  "don't answer that. i'm testing you."
+];
+// falling for the trap at 19
+var TRAP_TWENTY = "twenty. eventually. that's what you get for listening to me.";
+var TRAP_OTHER = function (v) { return 'HA. gotcha. ' + v + "? not so good at counting when someone's talking, huh."; };
+var WRONG_HINTS = { 2: 'dials only go one way. round and round.', 4: "9, then 0, then back where it was. you'll get there.",
+                    7: 'tsk.', 10: 'slowly. like we practised.' };
+var FIXED = "there we go. let's never do that again.";
+// straying: more than 15 wrong taps while learning to count. a "get back to counting" line,
+// then a "you were on n" line, alternating every few more wrong taps.
+var STRAY_AFTER = 16, STRAY_EVERY = 4;
+var STRAY_BACK = [
+  "ok, free play is over. back to counting, please.",
+  "this isn't a slot machine, sweetie. we're counting.",
+  'fascinating. none of those are the next number.',
+  "you're just tapping things now. i can tell."
+];
+var STRAY_WHERE = [
+  'we were on {n}. remember {n}? good times.',
+  "you were on {n}. the next one is {next}. that's the whole game.",
+  "{n}. you were on {n}. i'll write it down for you.",
+  "it's the number after {n}. you've got this. probably."
+];
+var NAMES = ['hundred-thousands', 'ten-thousands', 'thousands', 'hundreds', 'tens', 'ones'];
+
+(function () {
+  var msg = document.getElementById('msg');
+  var sub = document.getElementById('sub');
+  var counter = document.getElementById('n');
+  var dials = counter.children;
+  var home = document.getElementById('home');
+  var startBtn = document.getElementById('start');
+  var resumeBtn = document.getElementById('resume');
+
+  var saidAt = 0;
+  function say(text) {
+    if (text === undefined || msg.textContent === text) return;
+    saidAt = Date.now();
+    msg.textContent = text;
+    msg.style.animation = 'none';
+    void msg.offsetWidth;
+    msg.style.animation = '';
+  }
+  function value() {
+    if (s.digits.some(function (d) { return d === null; })) return NaN;
+    return parseInt(s.digits.join(''), 10);
+  }
+  function phase() {
+    if (s.q !== undefined && s.q !== null && s.q >= 0 && s.count < GOAL) return 'quiz';
+    if (s.count >= LOCK_FROM && s.count < GOAL) return 'lock';
+    if (s.count >= RANDOM_FROM && s.count < RANDOM_UNTIL) return 'random';
+    if (s.count >= BLIND_FROM && s.count < BLIND_UNTIL) return 'blind';
+    return 'normal';
+  }
+  function paint() {
+    var hidden = phase() === 'blind' && !s.peek;
+    var shown = s.digits.map(function (d) { return d === null ? (phase() === 'lock' ? '_' : '\u00A0') : hidden ? '?' : String(d); });
+    for (var i = 0; i < 6; i++) {
+      dials[i].textContent = shown[i];
+      dials[i].setAttribute('aria-label', NAMES[i] + ' dial, showing ' + (hidden ? 'hidden' : shown[i]));
+    }
+    if (phase() === 'lock') {
+      var lock = lockDial();
+      lock.textContent = s.lock === 'locked' ? LOCK_SHOWS : s.lockSpin === null || s.lockSpin === undefined ? '\u00A0' : String(s.lockSpin);
+      lock.setAttribute('aria-label', 'lock dial, ' + (s.lock === 'locked' ? 'locked' : 'open'));
+    }
+    counter.setAttribute('aria-label', shown.join(''));
+    document.title = shown.join('') + ' — kenttami.es/3';
+  }
+  // the extra dial for the lock phase, made on demand
+  function lockDial() {
+    if (dials.length > 6) return dials[6];
+    var el = document.createElement('span');
+    el.className = 'lock';
+    counter.appendChild(el);
+    hookDial(el, 6);
+    return el;
+  }
+  function wiggle(i) {
+    dials[i].classList.remove('wiggle'); void dials[i].offsetWidth; dials[i].classList.add('wiggle');
+    clearTimeout(dials[i].w);
+    dials[i].w = setTimeout(function () { dials[i].classList.remove('wiggle'); }, 2000);
+  }
+
+  if (!levelDone(2)) {
+    say('nice try. finish level 2 first.');
+    consent(function () { track('l3_locked'); });
+    return;
+  }
+
+  // before the release: just the countdown. it opens by itself when the time comes.
+  if (!level3Open()) {
+    var showCountdown = function () {
+      if (level3Open()) return location.reload();
+      msg.textContent = 'level 3 opens in ' + untilRelease() + '. patience, sweetie.';
+    };
+    showCountdown();
+    setInterval(showCountdown, 1000);
+    consent(function () { track('l3_countdown_view'); });
+    return;
+  }
+
+  var s = null;
+  try { s = JSON.parse(load('l3')); } catch (e) {}
+  if (!s) s = { count: 0, digits: [0, 0, 0, 0, 0, 0], wrong: 0, refreshes: 0, taps: 0, wrongTotal: 0, firstTap: 0, agreed: false };
+  if (!s.spin) s.spin = [0, 0, 0, 0, 0, 0, 0];    // randomizer: taps until each dial lands right
+  if (!s.lock) s.lock = 'open';
+  if (s.taps > 0) s.agreed = true;   // saves from before the warning existed
+  function store() { save('l3', JSON.stringify(s)); }
+
+  // the reload after "start over" / "continue" isn't a refresh
+  var starting = takeFlag('l3start');
+  var continuing = takeFlag('l3continue');
+  var cameBack = openedFresh() && !continuing && !starting;
+  var inProgress = load('l3') !== null && s.count < GOAL && s.agreed && (s.taps > 0 || s.count > 0);
+
+  // coming back part-way through (not a refresh): continue or start over
+  if (cameBack && inProgress) {
+    paint();
+    offerResume(3, 'welcome back, sweetie.', function () { forget('l3'); });
+    return;
+  }
+
+  // the end screen's "start level" button
+  startBtn.addEventListener('click', function () {
+    track('level_restart', { level: 3 });
+    forget('l3');
+    setFlag('l3start');
+    location.reload();
+  });
+
+  // finished earlier and nothing in progress: done screen
+  if (cameBack && levelDone(3) && s.count < GOAL && s.agreed) {
+    paint();
+    say('level 3 done.');
+    startBtn.hidden = false;
+    consent(function () { track('level_done_view', { level: 3 }); });
+    return;
+  }
+
+  paint();
+  if (s.count >= GOAL) return finished(false);
+
+  // a fresh start asks first: "level 3 is difficult..."
+  var warn = document.getElementById('warn');
+  var opened = Date.now();
+  if (!s.agreed) {
+    warn.hidden = false;
+    document.getElementById('nope').addEventListener('click', function () {
+      track('l3_warning', { answer: 'no' });
+      location.href = '../';
+    });
+    document.getElementById('go').addEventListener('click', function () {
+      track('l3_warning', { answer: 'yes' });
+      s.agreed = true;
+      store();
+      warn.hidden = true;
+      opened = Date.now();
+      say(SCRIPT[0]);
+    });
+  // refreshing never moves the count, it just gets a remark
+  } else if (!openedFresh() && !starting && !continuing) {
+    say(REFRESH_JOKES[Math.min(s.refreshes, REFRESH_JOKES.length - 1)]);
+    s.refreshes++;
+    store();
+  } else if (phase() === 'quiz') {
+    say(QUIZ[s.q].q);
+  } else {
+    say(SCRIPT[s.count] || '');
+  }
+  if (phase() === 'quiz' && !openedFresh() && !starting && !continuing) setTimeout(function () { askQuestion(true); }, 2500);
+  else if (phase() === 'quiz') { if (!s.qStart) { s.qStart = Date.now(); store(); } playNotes(s.q); }
+  // reached 20 but the quiz never started (left during the intro): start it now
+  if (s.agreed && s.count === QUIZ_FROM && (s.q === undefined || s.q === null || s.q < 0)) setTimeout(startQuiz, 1500);
+
+  // nudges before the very first tap
+  var idle = setInterval(function () {
+    if (s.taps > 0) return clearInterval(idle);
+    if (!s.agreed) { opened = Date.now(); return; }
+    var secs = (Date.now() - opened) / 1000;
+    IDLE_HINTS.forEach(function (h, i) {
+      if (secs >= h[0] && !idle['h' + i]) { idle['h' + i] = 1; say(h[1]); if (i === 1) wiggle(5); }
+    });
+  }, 500);
+
+  var events = [];
+  function log(name, params) { events.push([name, params]); track(name, params); }
+
+  // in a carry: the ones dial wrapped while the count ended in 9, and only the ones dial has moved since
+  function carryState() {
+    if (s.count % 10 !== 9) return null;
+    var c = String(s.count).padStart(6, '0').split('').map(Number);
+    for (var i = 0; i < 5; i++) if (s.digits[i] !== c[i]) return null;
+    return s.digits[5];          // 0 = just wrapped, 1-8 = kept tapping the ones dial
+  }
+
+  function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function randomOther(not1, not2) {
+    var d; do { d = rand(0, 9); } while (d === not1 || d === not2);
+    return d;
+  }
+  function target() { return String(s.count + 1).padStart(6, '0').split('').map(Number); }
+
+  // moved on to the next number: reset per-number state and say its line
+  function advance(v) {
+    var before = phase();
+    s.count = v;
+    s.wrong = 0;
+    s.peek = false;
+    s.spin = [0, 0, 0, 0, 0, 0, 0];
+    say(v === 20 && s.trapped ? TRAP_TWENTY : SCRIPT[v] || '');
+    if (phase() === 'lock') {
+      s.lock = 'open';
+      s.lockSpin = null;
+      if (before !== 'lock') setTimeout(function () { say(LOCK_NEW); }, 1800);
+      else setTimeout(function () { say(LOCK_AGAIN); }, 1800);
+    }
+    if (before === 'random' && phase() === 'lock') log('l3_random_done');
+    if (before === 'blind' && phase() !== 'blind') { counter.classList.add('win'); setTimeout(function () { counter.classList.remove('win'); }, 3000); log('l3_blind_done', { wrong_taps: s.wrongTotal }); }
+    store();
+    paint();
+    if (v >= GOAL) finished(true);
+    else if (v === QUIZ_FROM && (s.q === undefined || s.q === null || s.q < 0)) setTimeout(startQuiz, 2600);
+  }
+
+  // ---- the quiz: answer by setting the dials. a correct answer moves on by itself. ----
+  var hintIndex = 0, lastQuizTap = Date.now();
+  function startQuiz() {
+    s.q = 0;
+    store();
+    log('l3_quiz_start');
+    say(QUIZ_INTRO);
+    setTimeout(askQuestion, 2200);
+  }
+  function askQuestion(resumed) {
+    if (phase() !== 'quiz') return;
+    hintIndex = 0;
+    lastQuizTap = Date.now();
+    if (!resumed || !s.qStart) { s.qStart = Date.now(); s.qFirstTap = 0; s.flipShown = false; }
+    noteQueue = []; clearTimeout(noteTimer); lastNoteAt = 0;
+    say(QUIZ[s.q].q);
+    sub.hidden = true;
+    store();
+    playNotes(s.q);
+  }
+  // timed remarks for a question; after a refresh, picks up with the one that's due
+  function notesEnd(item) { return item.notes ? item.notes[item.notes.length - 1][0] * 1000 : 0; }
+  function playNotes(q) {
+    var item = QUIZ[q];
+    if (!item.notes) return;
+    var elapsed = Date.now() - s.qStart;
+    var due = item.notes.filter(function (n) { return n[0] * 1000 <= elapsed; });
+    if (due.length) quizNote(due[due.length - 1][1]);
+    item.notes.forEach(function (n) {
+      if (n[0] * 1000 <= elapsed) return;
+      setTimeout(function () {
+        if (phase() === 'quiz' && s.q === q && !answered(item)) quizNote(n[1]);
+      }, n[0] * 1000 - elapsed);
+    });
+  }
+  // every hint or remark goes through here, so the timers can count from the latest one
+  var lastNoteAt = 0, noteQueue = [], noteTimer = null;
+  function quizNote(text) {
+    sub.textContent = text;
+    sub.hidden = false;
+    sub.style.animation = 'none'; void sub.offsetWidth; sub.style.animation = '';
+    lastNoteAt = Date.now();
+  }
+  // reactions to what the player does: shown at once, or queued until 5 seconds after the last hint
+  function hintNote(text) {
+    noteQueue.push({ text: text, q: s.q });
+    pumpNotes();
+  }
+  function pumpNotes() {
+    clearTimeout(noteTimer);
+    if (!noteQueue.length) return;
+    var wait = lastNoteAt + HINT_GAP_MS - Date.now();
+    if (wait > 0) { noteTimer = setTimeout(pumpNotes, wait); return; }
+    var next = noteQueue.shift();
+    if (phase() === 'quiz' && s.q === next.q && !answered(QUIZ[s.q])) quizNote(next.text);
+    if (noteQueue.length) noteTimer = setTimeout(pumpNotes, HINT_GAP_MS);
+  }
+  // is the dial setting the answer to this question?
+  function answered(item) {
+    if (item.slot) return s.digits.every(function (d, k) { return d === SLOT_ANSWER[k]; });
+    return value() === item.a;
+  }
+  function tapQuiz(i) {
+    var item = QUIZ[s.q];
+    if (!s.qFirstTap) s.qFirstTap = Date.now();
+    if (item.slot && i === 5) {
+      // the last dial: 0, 1, 3 ... 9 (no 2), then an empty slot, then 0 again
+      var d5 = s.digits[5];
+      s.digits[5] = d5 === null ? 0 : d5 === 9 ? null : d5 === 1 ? 3 : d5 + 1;
+      if (d5 === 1) s.skips = (s.skips || 0) + 1;
+      if (s.skips === NO_TWO_ON_SKIP && !s.noTwoSeen) { s.noTwoSeen = true; hintNote(SLOT_NO_TWO); log('l3_no_two'); }
+      if (s.digits[5] === null && !s.slotSeen) { s.slotSeen = true; hintNote(SLOT_FOUND); log('l3_slot_found'); }
+    } else {
+      s.digits[i] = s.digits[i] === null ? 0 : (s.digits[i] + 1) % 10;
+    }
+    paint();
+    lastQuizTap = Date.now();
+    if (item.slot && value() === item.a && !s.plainSeen) { s.plainSeen = true; hintNote(SLOT_PLAIN); }
+    if (!answered(item)) { store(); return; }
+    log('l3_quiz_answer', { q: s.q + 1, answer: item.a, seconds: Math.round((Date.now() - (s.qStart || Date.now())) / 1000), hints: hintIndex });
+    s.q++;
+    var last = s.q >= QUIZ.length;
+    celebrateNumber(last);
+    quizNote(last ? '' : QUIZ_YES[(s.q - 1) % QUIZ_YES.length]);
+    store();
+    if (last) {
+      s.count = GOAL;
+      store();
+      setTimeout(function () { finished(true); }, 900);
+    } else {
+      setTimeout(askQuestion, 1700);
+    }
+  }
+  // hints: one every 10 seconds while the answer isn't there, tapping or not, at least 5 s after any other line
+  setInterval(function () {
+    if (phase() !== 'quiz' || !s.agreed || document.visibilityState !== 'visible') return;
+    var item = QUIZ[s.q];
+    if (!item || answered(item)) return;
+    var now = Date.now();
+    if (now - lastNoteAt < HINT_GAP_MS || noteQueue.length) return;
+    // the 15 seconds of tapping start again whenever another hint shows up
+    var tappingSince = Math.max(s.qFirstTap || 0, lastNoteAt);
+    if (item.flip && !s.flipShown && s.qFirstTap && now - tappingSince >= item.flip.after * 1000) {
+      s.flipShown = true;
+      store();
+      quizNote(item.flip.text);
+      lastQuizTap = Date.now();
+      return;
+    }
+    if (hintIndex >= item.h.length) return;
+    if (now - Math.max(s.qStart || 0, lastNoteAt) < HINT_AFTER_MS) return;
+    if (Date.now() - (s.qStart || 0) < notesEnd(item) + HINT_AFTER_MS) return;   // let the remarks finish first
+    quizNote(item.h[hintIndex++]);
+    lastQuizTap = Date.now();
+  }, 1000);
+
+  // ---- confetti and lasers, drawn on a canvas over the page ----
+  var COLORS = ['#39ff14', '#ffd34d', '#ff4d6d', '#4dd2ff', '#c77dff', '#ffffff'];
+  var calmMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fx = null, bits = [], beams = [], fxRunning = false;
+  function fxCanvas() {
+    if (fx) return fx;
+    fx = document.createElement('canvas');
+    fx.className = 'fx';
+    fx.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(fx);
+    return fx;
+  }
+  function burst(x, y, count, power) {
+    for (var k = 0; k < count; k++) {
+      var a = Math.random() * Math.PI * 2, v = (2 + Math.random() * 5) * power;
+      bits.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3 * power, life: 1,
+                  w: 4 + Math.random() * 5, h: 2 + Math.random() * 4, r: Math.random() * 6, vr: Math.random() * 0.4 - 0.2,
+                  c: COLORS[k % COLORS.length], spark: Math.random() < 0.3 });
+    }
+    runFx();
+  }
+  function lasers(x, y, count) {
+    for (var k = 0; k < count; k++) beams.push({ x: x, y: y, a: (k / count) * Math.PI * 2 + Math.random() * 0.3, life: 1, c: COLORS[k % COLORS.length] });
+    runFx();
+  }
+  function runFx() {
+    if (fxRunning) return;
+    fxRunning = true;
+    var c = fxCanvas(), g = c.getContext('2d'), dpr = window.devicePixelRatio || 1;
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    (function step() {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      beams = beams.filter(function (b) {
+        b.life -= 0.045;
+        var len = Math.max(innerWidth, innerHeight) * (1.1 - b.life);
+        g.globalAlpha = Math.max(0, b.life);
+        g.strokeStyle = b.c; g.lineWidth = 3; g.shadowColor = b.c; g.shadowBlur = 12;
+        g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(b.x + Math.cos(b.a) * len, b.y + Math.sin(b.a) * len); g.stroke();
+        return b.life > 0;
+      });
+      g.shadowBlur = 0;
+      bits = bits.filter(function (p) {
+        p.vy += 0.18; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= 0.012;
+        g.globalAlpha = Math.max(0, p.life);
+        g.fillStyle = p.c;
+        if (p.spark) { g.beginPath(); g.arc(p.x, p.y, 2, 0, Math.PI * 2); g.fill(); }
+        else { g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); }
+        return p.life > 0 && p.y < innerHeight + 20;
+      });
+      g.globalAlpha = 1;
+      if (bits.length || beams.length) requestAnimationFrame(step);
+      else { g.clearRect(0, 0, innerWidth, innerHeight); fxRunning = false; }
+    })();
+  }
+  function centerOf(el) { var r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+  function pop(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  // a dial landed on the right digit: small burst, and it stays lit
+  function celebrateDial(i) {
+    dials[i].classList.add('landed');
+    pop(dials[i], 'pop');
+    if (!calmMotion) { var c = centerOf(dials[i]); burst(c[0], c[1], 45, 1); }
+  }
+  // a whole number done: big burst and lasers from the counter
+  function celebrateNumber(final) {
+    pop(counter, 'cheer');
+    if (calmMotion) return;
+    var c = centerOf(counter);
+    lasers(c[0], c[1], final ? 16 : 10);
+    burst(c[0], c[1], final ? 260 : 120, final ? 1.8 : 1.3);
+    if (final) setTimeout(function () { burst(innerWidth * 0.2, innerHeight * 0.35, 120, 1.5); burst(innerWidth * 0.8, innerHeight * 0.35, 120, 1.5); }, 350);
+  }
+  function clearLanded() { for (var k = 0; k < dials.length; k++) dials[k].classList.remove('landed'); }
+
+  // randomizer / lock: spin a dial. the right digit comes up after 3-8 taps.
+  function spinTo(i, want) {
+    if (s.digits[i] === want) {            // it was already right: scramble it
+      s.digits[i] = randomOther(want);
+      s.spin[i] = 0;
+      return 'scrambled';
+    }
+    if (!s.spin[i]) s.spin[i] = rand(SPIN_MIN, SPIN_MAX);
+    s.spin[i]--;
+    if (s.spin[i] <= 0) { s.digits[i] = want; s.spin[i] = 0; return 'landed'; }
+    s.digits[i] = randomOther(want, s.digits[i]);
+    return 'missed';
+  }
+
+  function tapRandom(i) {
+    if (phase() === 'lock') {
+      if (i === 6) {
+        if (s.lock === 'locked') return;
+        if (!s.spin[6]) s.spin[6] = rand(SPIN_MIN, SPIN_MAX);
+        s.spin[6]--;
+        if (s.spin[6] <= 0) {
+          s.lock = 'locked';
+          s.spin[6] = 0;
+          s.digits[4] = null; s.digits[5] = null;   // the two next to it start empty
+          say(LOCKED);
+          log('l3_locked_in', { count: s.count });
+        } else {
+          s.lockSpin = randomOther(s.lockSpin);
+        }
+        paint(); store();
+        return;
+      }
+      if (s.lock !== 'locked') { say(LOCK_FIRST); wiggle(6); return; }
+    }
+    var result = spinTo(i, target()[i]);
+    paint();
+    if (result === 'landed') celebrateDial(i);
+    if (result === 'scrambled') dials[i].classList.remove('landed');
+    if (value() === s.count + 1) {
+      celebrateNumber(s.count + 1 >= GOAL);
+      setTimeout(clearLanded, 700);
+      return advance(s.count + 1);
+    }
+    if (result === 'scrambled') say(SCRAMBLED);
+    else if (!s.randomSeen) { s.randomSeen = true; say(RANDOM_FIRST); }
+    else if (result === 'missed' && Math.random() < 0.35) say(RANDOM_MISS[rand(0, RANDOM_MISS.length - 1)]);
+    store();
+  }
+
+  function tap(i) {
+    if (s.count >= GOAL || !s.agreed) return;
+    if (!s.taps) log('l3_first_tap', { seconds: Math.round((Date.now() - opened) / 1000) });
+    s.taps++;
+    dials[i].classList.add('press');
+    setTimeout(function () { dials[i].classList.remove('press'); }, 90);
+    if (phase() === 'quiz') return tapQuiz(i);
+    if (phase() === 'random' || phase() === 'lock') return tapRandom(i);
+
+    s.digits[i] = (s.digits[i] + 1) % 10;
+    var v = value();
+    paint();
+
+    if (v === s.count + 1) {
+      if (s.count % 10 === 9) log('l3_carry', { to: v, wrong_taps: s.wrong });
+      return advance(v);
+    }
+
+    s.wrong++;
+    s.wrongTotal++;
+    if (s.count === 19 && !s.trapped) { s.trapped = true; log('l3_trapped'); }
+    var carry = carryState();
+    if (phase() === 'blind') {
+      // blindfolded: no specific hints, just a feeling. after a few, a peek.
+      if (v === s.count) { if (s.peek) { s.peek = false; say(BLIND_AGAIN); paint(); } s.wrong = 0; }
+      else if (s.wrong === 1) say(BLIND_WRONG);
+      else if (s.wrong === PEEK_AFTER && !s.peek) { s.peek = true; say(PEEK); paint(); log('l3_peek', { count: s.count }); }
+    } else if (v === s.count) {
+      say(FIXED);
+      s.wrong = 0;
+    } else if (s.count < QUIZ_FROM && s.wrong >= STRAY_AFTER && (s.wrong - STRAY_AFTER) % STRAY_EVERY === 0) {
+      var turn = (s.wrong - STRAY_AFTER) / STRAY_EVERY;
+      var lines = turn % 2 === 0 ? STRAY_BACK : STRAY_WHERE;
+      say(lines[Math.floor(turn / 2) % lines.length].replace(/\{n\}/g, s.count).replace(/\{next\}/g, s.count + 1));
+      if (turn % 2 === 1) {
+        // wiggle the dial that's showing the wrong digit
+        var want = String(s.count + 1).padStart(6, '0');
+        for (var w = 0; w < 6; w++) if (String(s.digits[w]) !== want[w]) { wiggle(w); break; }
+      }
+      if (turn === 0) log('l3_strayed', { count: s.count });
+    } else if (carry !== null && CARRY_HINTS[s.count]) {
+      var hints = CARRY_HINTS[s.count];
+      var n = s.wrong - 1;          // the wrap itself is wrong tap 0
+      if (carry > 0 && s.count < 29) say('we did ' + v + ' already, sweetie. ages ago.');
+      if (hints[n] !== undefined) say(hints[n]);
+      if (hints.w !== undefined && n >= hints.w) wiggle(4);
+    } else if (s.wrong === 1 && s.count === 19) {
+      say(TRAP_OTHER(v));
+    } else if (s.wrong === 1) {
+      var big = s.digits.slice(0, 4).some(function (d, k) { return d !== +String(s.count).padStart(6, '0')[k]; });
+      if (big) say('that dial is for grown-ups.');
+      else if (v > s.count) say(v + '? we skipped ' + (v - s.count - 1) + ' whole number' + (v - s.count - 1 === 1 ? '' : 's') + '. that\'s cheating.');
+      else say(v + '? that\'s going backwards, sweetie.');
+      log('l3_wrong', { from: s.count, to: v });
+    } else if (WRONG_HINTS[s.wrong]) {
+      say(WRONG_HINTS[s.wrong]);
+    }
+    store();
+  }
+
+  function hookDial(el, i) {
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.addEventListener('click', function () { tap(i); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(i); }
+    });
+  }
+  for (var d = 0; d < 6; d++) hookDial(dials[d], d);
+  paint();
+
+  // after a refresh in the randomizer, dials that already landed light up again
+  if (phase() === 'random') {
+    var was = String(s.count).padStart(6, '0').split('').map(Number), want = target();
+    for (var k = 0; k < 6; k++) if (s.digits[k] === want[k] && want[k] !== was[k]) dials[k].classList.add('landed');
+  }
+
+  // the teacher rambles between 13 and 19, without talking over a fresh line
+  var chatterIndex = 0;
+  setInterval(function () {
+    if (!s.agreed || s.count < CHATTER_FROM || s.count >= CHATTER_UNTIL || s.wrong > 0) return;
+    if (document.visibilityState !== 'visible' || Date.now() - saidAt < CHATTER_MS - 500) return;
+    say(CHATTER[chatterIndex++ % CHATTER.length]);
+  }, 1000);
+
+  function finished(justNow) {
+    markDone(3);
+    if (dials.length > 6) counter.removeChild(dials[6]);
+    if (justNow) {
+      log('l3_done', { taps: s.taps, wrong_taps: s.wrongTotal });
+      counter.classList.add('win');
+    }
+    say(QUIZ_FINAL);
+    sub.hidden = true;
+    Array.prototype.forEach.call(dials, function (el) { el.removeAttribute('role'); el.removeAttribute('tabindex'); });
+    counter.classList.remove('dials');
+    // "level 3 done." fades in after a pause, then "go back" a little later
+    // (both straight away when reopening a finished level)
+    setTimeout(function () {
+      sub.textContent = 'level 3 done.';
+      sub.classList.add('later');
+      sub.hidden = false;
+    }, justNow ? END_PAUSE_MS : 0);
+    setTimeout(function () {
+      home.classList.add('later');
+      home.hidden = false;
+    }, justNow ? END_PAUSE_MS + BACK_PAUSE_MS : 0);
+  }
+
+  consent(function () {
+    track('l3_view', { count: s.count });
+    events.forEach(function (e) { track(e[0], e[1]); });
+  });
+})();
+</script>
+</body>
+</html>

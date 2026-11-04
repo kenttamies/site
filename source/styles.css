@@ -1,0 +1,266 @@
+:root {
+  --bg: #fff;
+  --fg: #000;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #000; --fg: #fff; }
+}
+
+[hidden] { display: none !important; }
+
+/* the counter sits in a fixed spot just below the middle; text appears above it */
+body {
+  margin: 0;
+  height: 100svh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 0.8fr);
+  justify-items: center;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+}
+
+main {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px 32px;
+}
+
+/* late-90s hit counter: one black tile per digit in a bevelled frame */
+h1 {
+  margin: 0;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: #000;
+  border: 3px outset #a0a0a0;
+  font: bold clamp(1.25rem, 6vw, 2.5rem)/1 "Courier New", Courier, monospace;
+  font-variant-numeric: tabular-nums;
+}
+h1 span {
+  display: block;
+  width: 1.05ch;
+  padding: 0.15em 0.2em;
+  text-align: center;
+  color: #39ff14;
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.55);
+  background: linear-gradient(#262626, #0b0b0b 49%, #000 49%, #000 51%, #161616);
+  border: 1px solid #3a3a3a;
+}
+
+#msg {
+  margin: 0;
+  font-size: 15px;
+  text-align: center;
+  animation: fade 0.6s ease-out both;
+}
+#msg:empty { display: none; }
+
+#ask, .ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-size: 15px;
+  animation: fade 0.6s ease-out both;
+}
+#ask p, .ask p { margin: 0; text-align: center; }
+.choices { display: flex; gap: 8px; }
+
+.btn {
+  font: 15px var(--mono);
+  color: var(--fg);
+  background: none;
+  border: 1px solid var(--fg);
+  padding: 8px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:focus:not(:focus-visible) { outline: none; }
+#again { animation: fade 0.6s ease-out both; }
+@media (hover: hover) {
+  .btn:hover { background: var(--fg); color: var(--bg); }
+}
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+
+@keyframes fade { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #msg, #ask, .ask, #again { animation: none; }
+}
+
+::selection { background: var(--fg); color: var(--bg); }
+
+/* small link back to the level picker */
+#back {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px));
+  font-size: 13px;
+  color: var(--fg);
+  opacity: 0.5;
+  text-decoration: none;
+}
+#back:hover, #back:focus-visible { opacity: 1; text-decoration: underline; }
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.row:not(:has(:not([hidden]))) { display: none; }
+a.btn { text-decoration: none; display: inline-block; animation: fade 0.6s ease-out both; }
+
+#sub { margin: -12px 0 0; font-size: 13px; opacity: 0.6; text-align: center; }
+
+/* level picker: two counter-style tiles where the counter usually sits */
+.levels { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 640px; }
+.level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 132px;
+  padding: 12px 18px 10px;
+  background: #000;
+  border: 3px outset #a0a0a0;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.level b {
+  font: bold 22px/1 "Courier New", Courier, monospace;
+  color: #39ff14;
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.55);
+}
+.level span { font: 12px var(--mono); color: #9a9a9a; }
+@media (hover: hover) {
+  .level:hover { border-style: inset; }
+}
+.level:active { border-style: inset; }
+.level:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+.level.locked b { color: #3d3d3d; text-shadow: none; }
+.level.locked { cursor: not-allowed; }
+
+/* level 2 puzzle: the digits become buttons */
+h1.tap span { cursor: pointer; animation: nudge 1.4s ease-in-out 2; }
+h1.tap span:focus-visible { outline: 2px solid #39ff14; outline-offset: -2px; }
+@media (hover: hover) {
+  h1.tap span:hover { color: #b6ff9e; }
+}
+@keyframes nudge { 50% { transform: translateY(-3px); } }
+h1.win span { animation: win 0.5s steps(1) 6; }
+@keyframes win { 50% { color: transparent; text-shadow: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  a.btn, h1.tap span, h1.win span { animation: none; }
+}
+
+/* level 2: the big red button, below the counter */
+#panic { align-self: start; padding-top: 28px; }
+#red {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  border: 6px solid #5a0000;
+  background: radial-gradient(circle at 35% 30%, #ff6b6b, #e00000 45%, #9a0000 80%);
+  box-shadow: 0 8px 0 #4a0000, 0 12px 18px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font: bold 15px "Courier New", Courier, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: pop 0.35s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+#red:active, #red.hit { transform: translateY(6px); box-shadow: 0 2px 0 #4a0000, 0 4px 8px rgba(0, 0, 0, 0.35); }
+#red.hit { animation: none; }
+#red:focus-visible { outline: 3px solid var(--fg); outline-offset: 4px; }
+@keyframes pop { from { transform: scale(0.2); opacity: 0; } }
+
+/* level 3 teaser tile: a little movie poster */
+.level.soon { border-color: #b08d2a; border-style: outset; }
+.level.soon b { color: #ffd34d; text-shadow: 0 0 6px rgba(255, 211, 77, 0.5); }
+.level.soon span { color: #d8c79a; text-align: center; line-height: 1.4; }
+
+#msg.big { font-size: 64px; line-height: 1; }
+
+/* level 3: every digit is a dial you tap */
+h1.dials span { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+h1.dials span.press { transform: translateY(2px); filter: brightness(1.4); }
+h1.dials span:focus-visible { outline: 2px solid #39ff14; outline-offset: -2px; }
+@media (hover: hover) {
+  h1.dials span:hover { color: #b6ff9e; }
+}
+h1 span.wiggle { animation: wiggle 0.6s ease-in-out 3; }
+@keyframes wiggle { 25% { transform: translateY(-4px); } 75% { transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) {
+  h1 span.wiggle { animation: none; outline: 2px solid #39ff14; outline-offset: -2px; }
+}
+
+
+/* level 3 lock phase: the extra dial on the right */
+h1 span.lock { width: auto; min-width: 1.05ch; border-color: #6b5a1f; }
+
+/* level 3 randomizer: a dial that landed on the right digit pops and stays lit */
+h1 span.landed { color: #eaffdf; border-color: #39ff14; box-shadow: 0 0 10px rgba(57, 255, 20, 0.8), inset 0 0 8px rgba(57, 255, 20, 0.5); }
+h1 span.pop { animation: dialpop 0.35s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes dialpop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+h1.cheer { animation: cheer 0.6s ease-out; }
+@keyframes cheer { 0% { box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.9); } 100% { box-shadow: 0 0 0 26px rgba(57, 255, 20, 0); } }
+canvas.fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; }
+@media (prefers-reduced-motion: reduce) {
+  h1 span.pop, h1.cheer { animation: none; }
+}
+
+/* level 3 ending: "level 3 done." and "go back" fade in slowly after a pause */
+#sub.later, a.btn.later { animation: fade 1.5s ease-out both; }
+@media (prefers-reduced-motion: reduce) { #sub.later, a.btn.later { animation: none; } }
+
+/* homepage: Projects / About under the counter, password box and links below them */
+.menu {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 16px 0;
+}
+.menu .row { gap: 12px; }
+#vault { display: flex; flex-direction: column; align-items: center; gap: 12px; animation: fade 0.4s ease-out both; }
+#unlock { display: flex; gap: 8px; }
+.field {
+  font: 15px var(--mono);
+  color: var(--fg);
+  background: none;
+  border: 1px solid var(--fg);
+  padding: 8px 10px;
+  width: 11ch;
+  border-radius: 0;
+}
+.field::placeholder { color: var(--fg); opacity: 0.4; }
+.field:focus { outline: 2px solid var(--fg); outline-offset: 2px; }
+#nope { margin: 0; font-size: 13px; opacity: 0.7; min-height: 1em; }
+#nope:empty { display: none; }
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 180px;
+}
+.links a.btn { display: block; text-align: center; }
+.links li:nth-child(2) a { animation-delay: 0.08s; }
+.links li:nth-child(3) a { animation-delay: 0.16s; }
+.links li:nth-child(4) a { animation-delay: 0.24s; }
+.shake { animation: shake 0.35s ease-in-out; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { #vault, .shake { animation: none; } }

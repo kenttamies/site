@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kenttami.es</title>
+<meta name="description" content="now i know you visited.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../stylesheets/styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1036677210293656"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+<a id="back" href="../">&larr; levels</a>
+<main>
+  <p id="msg"></p>
+  <div id="ask" hidden>
+    <p>cookies?</p>
+    <div class="choices">
+      <button id="yes" class="btn" type="button">yes</button>
+      <button id="no" class="btn" type="button">no</button>
+    </div>
+  </div>
+  <div class="row">
+    <button id="again" class="btn" type="button" hidden>start over</button>
+    <a id="next" class="btn" href="../2/" hidden>level 2 &rarr;</a>
+    <button id="resume" class="btn" type="button" hidden>continue</button>
+    <button id="start" class="btn" type="button" hidden>start level</button>
+  </div>
+</main>
+<h1 id="n" aria-label="000001"><span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><span>1</span></h1>
+<script>
+// Names the visitor's own way of refreshing.
+function refreshKeyLine() {
+  var ua = navigator.userAgent || '';
+  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1; // iPads report as Mac
+  var mobile = (navigator.userAgentData && navigator.userAgentData.mobile) ||
+               /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || touchMac;
+  if (mobile) return 'your refresh finger would like a word.';
+  if (/Mac/.test(navigator.platform || ua)) return 'your \u2318R would like a word.';
+  return 'your F5 key would like a word.';
+}
+
+// Each message shows on that one visit only. Keys are real visits.
+var STORY = {
+  6:   'still here...?',
+  11:  'you really like this page, huh..',
+  15:  "i'm flattered. really.",
+  20:  "there's nothing else here. i checked.",
+  24:  "the number goes up. that's the whole thing.",
+  28:  'is this what you came for?',
+  33:  refreshKeyLine(),
+  37:  "i've started telling people about you.",
+  42:  '42. the answer to everything. you can stop now.',
+  47:  "ok. i'm a little worried.",
+  50:  'halfway to nothing in particular.',
+  51:  '...wait.',
+  52:  "that's not right.",
+  54:  "ok. you broke it. i hope you're happy.",
+  57:  "honestly? i'll take it. we're popular now.",
+  60:  'visit not found.',
+  62:  "i've called someone. they're on their way.",
+  64:  "they asked if i'd tried turning it off and on again.",
+  65:  "hold on. i think i've got it...",
+  66:  'fixed. where were we?',
+  67:  '...close enough.',
+  73:  'you really thought i\'d say something at "67"',
+  74:  'and no, nothing at 69 either.',
+  77:  "let's never speak of the glitch again.",
+  81:  "at this point we're basically friends.",
+  85:  "i'd offer you a coffee, but i'm a website.",
+  89:  "you know this resets if you clear your browser data, right? please don't.",
+  92:  'still no secret ending. or is there.',
+  95:  "ten more. don't you dare stop now.",
+  100: "five. i can't watch.",
+  102: 'three.',
+  103: 'two.',
+  104: 'one more...',
+  105: "you made it. there's no prize. but now i really know you visited.",
+  // bonus level: keys are real visits, counter shows 5 less
+  115: "seriously. you are NOT well.",
+  118: "the button is right there.",
+  122: "it says \"start over\". it's not a trap.",
+  126: "ok. i see how it is.",
+  130: "fine. welcome to the bonus level.",
+  133: "128. a nice round number, if you're a computer.",
+  138: "i'm running out of things to say. you're not running out of refreshes.",
+  142: "have you eaten today?",
+  147: "drink some water. i'll wait.",
+  150: "...you didn't drink any water, did you.",
+  155: "150. this is a long-term relationship now.",
+  160: "i told my other visitors about you. they don't believe me.",
+  165: "do you want to talk about it?",
+  171: "i started a support group. you're the only member.",
+  175: "your browser history is going to look very weird.",
+  180: "most people stop at 6. just so you know.",
+  185: "i'm impressed. and a little scared.",
+  195: "the start over button is nice. it's quiet. think about it.",
+  205: "200. ok. respect.",
+  207: "202: accepted. you've been accepted.",  // counter 204 is left empty on purpose
+  210: "that was a 204 joke. it had no content.",
+  215: "forty to go. you know how this works.",
+  225: "thirty.",
+  235: "twenty. i'm getting emotional.",
+  245: "ten.",
+  250: "five.",
+  253: "two.",
+  254: "one...",
+  255: "that's really it. nothing comes after this. i promise. go outside."
+};
+var LOST = 5;           // visits the glitch "loses": after it, the counter runs 5 behind
+var FINALE = 105;       // real visit of the finale (counter shows 100)
+var START_OVER_AT = 110;
+var BONUS_END = 255;    // real visit of the last line (counter shows 250)
+
+// What the counter shows. Visits 51-65 are the glitch; afterwards it comes back at 61.
+function shown(n) {
+  if (n >= 51 && n <= 59) return 734219 + (n - 51); // suddenly popular
+  if (n >= 60 && n <= 65) return 404;               // visit not found
+  if (n >= 66) return n - LOST;                     // back, but 5 short
+  return n;
+}
+
+// The step reported to analytics: the counter number, or g51-g65 during the glitch.
+function step(n) {
+  if (n >= 51 && n <= 65) return 'g' + n;
+  return n >= 66 ? n - LOST : n;
+}
+
+// The count lives in the visitor's own browser.
+(function () {
+  var round = parseInt(load('playthrough'), 10) || 1;
+
+  var continuing = takeFlag('l1continue');
+  var starting = takeFlag('l1start');
+  var current = parseInt(load('visits'), 10) || 0;
+
+  // coming back to the level (not a refresh): continue or start over
+  if (current > 0 && openedFresh() && !continuing && !starting) {
+    renderCounter(document.getElementById('n'), pad(shown(current)));
+    document.title = 'level 1 — kenttami.es';
+    offerResume(1, levelDone(1) ? 'level 1 done.' : 'welcome back.', function () {
+      save('visits', 0);
+      save('playthrough', round + 1);
+    });
+    return;
+  }
+
+  // "continue" picks up on the same visit; anything else is a new visit
+  var n = continuing ? current : current + 1;
+  if (!continuing) save('visits', n);
+
+  var label = pad(shown(n));
+  renderCounter(document.getElementById('n'), label);
+  document.title = label + ' — kenttami.es';
+  if (n >= FINALE) {
+    markDone(1);
+    document.getElementById('next').hidden = false;
+  }
+
+  if (STORY[n]) document.getElementById('msg').textContent = STORY[n];
+
+  function sendVisit() {
+    track('counter_view', { visit_number: n, playthrough: round });
+    if (STORY[n]) track('story_milestone', { milestone: step(n), playthrough: round });
+    if (n === FINALE) track('story_complete', { playthrough: round });
+    if (n === BONUS_END) track('bonus_complete', { playthrough: round });
+  }
+
+  // the very first visit is just the counter; "cookies?" comes with the first refresh
+  if (!(n === 1 && load('cookies') === null)) consent(function () { if (!continuing) sendVisit(); });
+
+  var again = document.getElementById('again');
+  if (n >= START_OVER_AT) again.hidden = false;
+  again.addEventListener('click', function () {
+    forget('visits');
+    save('playthrough', round + 1);
+    var done = false;
+    function go() { if (!done) { done = true; location.reload(); } }
+    if (window.gtag) {
+      track('start_over', { playthrough: round, event_callback: go, event_timeout: 1000 });
+      setTimeout(go, 1200);
+    } else {
+      go();
+    }
+  });
+})();
+</script>
+</body>
+</html>
